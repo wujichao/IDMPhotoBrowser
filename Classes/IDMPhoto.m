@@ -8,6 +8,7 @@
 
 #import "IDMPhoto.h"
 #import "IDMPhotoBrowser.h"
+#import "SDURLCache.h"
 
 // Private
 @interface IDMPhoto () {
@@ -135,28 +136,51 @@ caption = _caption;
             // Load async from file
             [self performSelectorInBackground:@selector(loadImageFromFileAsync) withObject:nil];
         } else if (_photoURL) {
-            // Load async from web (using AFNetworking)
-            NSURLRequest *request = [[NSURLRequest alloc] initWithURL:_photoURL
-                                                          cachePolicy:NSURLRequestReturnCacheDataElseLoad
-                                                      timeoutInterval:0];
             
-            AFHTTPRequestOperation *op = [[AFHTTPRequestOperation alloc] initWithRequest:request];
-            op.responseSerializer = [AFImageResponseSerializer serializer];
-
-            [op setCompletionBlockWithSuccess:^(AFHTTPRequestOperation *operation, id responseObject) {
-                UIImage *image = responseObject;
-                self.underlyingImage = image;
+            SDURLCache *cache = (SDURLCache *)[SDURLCache sharedURLCache];
+            BOOL isCached = NO;
+            if ([cache respondsToSelector:@selector(isCached:)]) {
+                isCached = [cache isCached:_photoURL];
+                NSLog(@"isCache %d",isCached);
+            } else {
+                NSLog(@"Not use SDURLCache");
+            }
+            
+            if (isCached) {
+                NSLog(@"get cache success");
+                NSCachedURLResponse *response = [cache cachedResponseForRequest:[NSURLRequest requestWithURL:_photoURL cachePolicy:NSURLRequestReturnCacheDataDontLoad timeoutInterval:11]];
+                self.underlyingImage = [UIImage imageWithData:response.data];
+                
                 [self performSelectorOnMainThread:@selector(imageLoadingComplete) withObject:nil waitUntilDone:NO];
-            } failure:^(AFHTTPRequestOperation *operation, NSError *error) { }];
+            } else {
+                
+                SDWebImageManager *manager = [SDWebImageManager sharedManager];
+                [manager downloadWithURL:_photoURL
+                                 options:0
+                                progress:^(NSInteger receivedSize, NSInteger expectedSize) {
+                                    
+                                    if (expectedSize == 0) {
+                                        expectedSize = 300 * 1024;
+                                    }
+                                    
+                                    float progress = receivedSize / (float)expectedSize;
+                                    if (self.progressUpdateBlock) {
+                                        self.progressUpdateBlock(progress);
+                                    }
+                                }
+                               completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished) {
+                                   if (error) {
+                                       
+                                       self.underlyingImage = nil;
+                                       [self performSelectorOnMainThread:@selector(imageLoadingComplete) withObject:nil waitUntilDone:NO];
+                                       
+                                       NSLog(@"SDWebImage failed to download image: %@, url, %@", error, _photoURL);
+                                   }
+                                   self.underlyingImage = image;
+                                   [self performSelectorOnMainThread:@selector(imageLoadingComplete) withObject:nil waitUntilDone:NO];
+                               }];
+            }
             
-            [op setDownloadProgressBlock:^(NSUInteger bytesRead, long long totalBytesRead, long long totalBytesExpectedToRead) {
-                CGFloat progress = ((CGFloat)totalBytesRead)/((CGFloat)totalBytesExpectedToRead);
-                if (self.progressUpdateBlock) {
-                    self.progressUpdateBlock(progress);
-                }
-            }];
-            
-            [[NSOperationQueue mainQueue] addOperation:op];
         } else {
             // Failed - no source
             self.underlyingImage = nil;
