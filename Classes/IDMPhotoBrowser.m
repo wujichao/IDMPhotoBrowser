@@ -1235,6 +1235,11 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
             
             self.activityViewController = [[UIActivityViewController alloc] initWithActivityItems:activityItems applicationActivities:nil];
             
+            if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad
+                && SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"8.0")) {
+                self.activityViewController.popoverPresentationController.barButtonItem = sender;
+            }
+            
             __typeof__(self) __weak selfBlock = self;
             [self.activityViewController setCompletionHandler:^(NSString *activityType, BOOL completed) {
                 [selfBlock hideControlsAfterDelay];
