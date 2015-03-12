@@ -281,7 +281,8 @@
 
 // Image View
 - (void)imageView:(UIImageView *)imageView singleTapDetected:(UITouch *)touch { 
-    [self handleSingleTap:[touch locationInView:imageView]];
+    //[self handleSingleTap:[touch locationInView:imageView]];
+    [_photoBrowser doneButtonPressed:imageView];
 }
 - (void)imageView:(UIImageView *)imageView doubleTapDetected:(UITouch *)touch {
     [self handleDoubleTap:[touch locationInView:imageView]];

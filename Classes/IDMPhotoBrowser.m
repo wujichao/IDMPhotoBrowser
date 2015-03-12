@@ -163,8 +163,8 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
         
         _displayToolbar = YES;
         _displayActionButton = YES;
-        _displayArrowButton = YES;
-        _displayCounterLabel = NO;
+        _displayArrowButton = NO;
+        _displayCounterLabel = YES;
         
         _forceHideStatusBar = NO;
         _usePopAnimation = NO;
@@ -279,7 +279,7 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
     
     // Gesture Began
     if ([(UIPanGestureRecognizer*)sender state] == UIGestureRecognizerStateBegan) {
-        [self setControlsHidden:YES animated:YES permanent:YES];
+        [self setControlsHidden:YES animated:YES permanent:NO];
         
         firstX = [scrollView center].x;
         firstY = [scrollView center].y;
@@ -1098,7 +1098,7 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
 	// Hide controls when dragging begins
-	[self setControlsHidden:YES animated:YES permanent:NO];
+	//[self setControlsHidden:YES animated:YES permanent:NO];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
@@ -1168,7 +1168,10 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
     
 	// Control hiding timer
 	// Will cancel existing timer but only begin hiding if they are visible
-	if (!permanent) [self hideControlsAfterDelay];
+    if (!permanent) {
+        if (hidden) [self showControlsAfterDelay];
+        else [self hideControlsAfterDelay];
+    }
     
     [self setNeedsStatusBarAppearanceUpdate];
 }
@@ -1183,7 +1186,7 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
 
 // Enable/disable control visiblity timer
 - (void)hideControlsAfterDelay {
-	// return;
+	return;
     
     if (![self areControlsHidden]) {
         [self cancelControlHiding];
@@ -1191,8 +1194,17 @@ NSLocalizedStringFromTableInBundle((key), nil, [NSBundle bundleWithPath:[[NSBund
 	}
 }
 
+- (void)showControlsAfterDelay {
+    
+    if ([self areControlsHidden]) {
+        [self cancelControlHiding];
+        _controlVisibilityTimer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(showControls) userInfo:nil repeats:NO];
+    }
+}
+
 - (BOOL)areControlsHidden { return (_toolbar.alpha == 0); }
 - (void)hideControls      { if(_autoHide) [self setControlsHidden:YES animated:YES permanent:NO]; }
+- (void)showControls      { [self setControlsHidden:NO animated:YES permanent:YES]; }
 - (void)toggleControls    { [self setControlsHidden:![self areControlsHidden] animated:YES permanent:NO]; }
 
 
